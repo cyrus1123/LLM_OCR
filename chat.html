@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Form</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            background-color: #1e1e1e;
+            padding: 20px;
+        }
+
+        .chat-history {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-bottom: 15px;
+            color: #e0e0e0;
+            height: 60%;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .chat-message.user {
+            color: #4da6ff;
+            font-weight: bold;
+        }
+
+        .chat-message.bot {
+            color: #cccccc;
+        }
+
+        .chat-form {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-top: 1px solid #333;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #4da6ff;
+        }
+
+        .file-input {
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            background-color: #1e7e34;
+        }
+
+        .clear-button {
+            background-color: #ff4c4c;
+        }
+
+        .clear-button:hover {
+            background-color: #e63939;
+        }
+
+        .clear-button:active {
+            background-color: #cc3333;
+        }
+
+        .buttons-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ocr-output {
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #4da6ff;
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            margin-top: 15px;
+            height: 100px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                padding: 10px;
+            }
+
+            .chat-history {
+                height: 50%;
+            }
+
+            .chat-input {
+                margin-right: 5px;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+
+            .clear-button {
+                padding: 8px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-history" id="chat-history">
+            <!-- Chat history will be displayed here -->
+        </div>
+        <form id="chat-form" class="chat-form" enctype="multipart/form-data">
+            <input type="file" id="image-file" class="file-input" name="image" accept="image/*">
+            <input type="text" id="message" class="chat-input" name="message" placeholder="Enter your message" required>
+            <button type="submit">Send</button>
+        </form>
+
+        <div class="buttons-container">
+            <button class="clear-button" id="clear-chat">Clear Chat</button> <!-- Clear chat button -->
+        </div>
+
+        <div id="ocr-output" class="ocr-output">
+            OCR Output: No content yet.
+        </div>
+    </div>
+
+    <script>
+        // Submit chat form event listener (existing)
+        document.getElementById('chat-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value;
+            const imageFile = document.getElementById('image-file').files[0];
+
+            const formData = new FormData();
+            formData.append('message', message);
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            // Send the message and image to the server
+            fetch('/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const chatHistory = document.getElementById('chat-history');
+                const responseMessageDiv = document.createElement('div');
+                responseMessageDiv.classList.add('chat-message', 'bot');
+                responseMessageDiv.innerHTML = 'Bot: ' + data.response;
+                chatHistory.appendChild(responseMessageDiv);
+
+                // Scroll chat history to the bottom
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+        // Clear chat history button event listener
+        document.getElementById('clear-chat').addEventListener('click', function() {
+            fetch('/clear', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear the chat history in the UI
+                    const chatHistory = document.getElementById('chat-history');
+                    chatHistory.innerHTML = ''; // Clear the chat history display
+                    console.log('Chat history cleared.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
